@@ -43,19 +43,24 @@ Cyber-Tower/
 ├── main.py                  # Entry point
 ├── config.py               # Costanti globali
 ├── game_manager.py         # Gestore stato del gioco
-├── states/                 # Gestione stati (Menu, Hub, Livelli, etc.)
+├── camera.py               # Camera con smooth lerp (Fase 3)
+├── collision.py            # Sistema AABB + sliding collision (Fase 3)
+├── states/                 # Gestione stati
 │   ├── base_state.py      # Classe base
 │   ├── menu_state.py      # Menu principale
 │   ├── hub_state.py       # Piano 0 (Hub)
-│   ├── level_state.py     # Livelli attivi (Fase 3-4)
+│   ├── level_state.py     # Livelli attivi (Fase 2-3)
 │   ├── inventory_state.py # Inventario (Fase 5)
 │   └── gameover_state.py  # Game Over
-├── entities/              # Entità di gioco (Player, Nemici, etc.)
-│   └── player.py          # (Fase 2)
+├── entities/              # Entità di gioco
+│   ├── player.py          # Player con physics (Fase 2)
+│   └── projectile.py      # Proiettili (Fase 2)
 ├── levels/                # Gestione livelli
-│   └── tilemap.py         # (Fase 3)
-├── ui/                    # Interfaccia utente
-│   └── ui_manager.py      # (Fase 5)
+│   ├── tilemap.py         # Sistema tilemap con parallax (Fase 3)
+│   ├── level_01.csv       # Livello 1 (Tutorial)
+│   └── level_02.csv       # Livello 2 (Intermediate)
+├── ui/                    # Interfaccia utente (Fase 5)
+│   └── ui_manager.py
 └── assets/                # Risorse (immagini, suoni, font)
 ```
 
@@ -77,10 +82,16 @@ Cyber-Tower/
 - ✓ Cooldown tra spari
 - ✓ Rendering con visualizzazione tubo di mira
 
-### 🔄 Fase 3: Tilemap e Telecamera
-- [ ] Sistema di caricamento livelli (CSV/Tiled)
-- [ ] Camera che segue il player
-- [ ] Collisioni con il tilemap
+### ✅ Fase 3: Tilemap e Telecamera
+- ✓ Sistema caricamento livelli da CSV
+- ✓ Rendering tilemap efficiente con culling
+- ✓ Camera che segue il player con smooth lerp
+- ✓ Parallax rendering a 3 layer (far/mid/close background)
+- ✓ Collisioni AABB con sliding collision (platformer fluido)
+- ✓ Hazard detection (spikes, water)
+- ✓ Collectible detection (monete)
+- ✓ Exit detection (completamento livello)
+- ✓ Debug grid e info camera
 
 ### 🔄 Fase 4: Nemici, IA e Combattimento
 - [ ] Classe base Enemy
@@ -132,4 +143,4 @@ Cyber-Tower/
 
 ---
 
-**Status**: 🚀 Fase 2 Completata! (scegli di proseguire alla Fase 3)
+**Status**: 🚀 Fase 3 Completata! (scegli di proseguire alla Fase 4)
