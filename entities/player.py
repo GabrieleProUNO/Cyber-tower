@@ -81,6 +81,7 @@ class Player(pygame.sprite.Sprite):
         self.color_hit = COLOR_RED
         self.color_current = self.color_normal
         self.facing_right = True
+        self.use_simple_bounds = False
 
     # ========================================================================
     # METODI DI INPUT E AGGIORNAMENTO
@@ -167,8 +168,9 @@ class Player(pygame.sprite.Sprite):
         self.rect.x += self.vx
         self.rect.y += self.vy
 
-        # ====== COLLISIONI SEMPLICI (Bordi schermo e piattaforme base) ======
-        self._handle_collisions()
+        # ====== COLLISIONI SEMPLICI (opzionali, utili solo in sandbox locale) ======
+        if self.use_simple_bounds:
+            self._handle_collisions()
 
         # ====== COYOTE TIME ======
         if not self.is_grounded:
@@ -211,7 +213,7 @@ class Player(pygame.sprite.Sprite):
             self.rect.top = 0
             self.vy = 0
 
-    def render(self, surface):
+    def render(self, surface, camera=None):
         """
         Disegna il player sullo schermo.
 
@@ -226,22 +228,36 @@ class Player(pygame.sprite.Sprite):
         else:
             color = self.color_normal
 
+        if camera is not None:
+            draw_rect = pygame.Rect(
+                int(self.rect.x - camera.x),
+                int(self.rect.y - camera.y),
+                self.rect.width,
+                self.rect.height,
+            )
+        else:
+            draw_rect = self.rect
+
         # Corpo del player
-        pygame.draw.rect(surface, color, self.rect)
+        pygame.draw.rect(surface, color, draw_rect)
 
         # Bordo
-        pygame.draw.rect(surface, COLOR_WHITE, self.rect, 2)
+        pygame.draw.rect(surface, COLOR_WHITE, draw_rect, 2)
 
         # Disegna il tubo di mira (gun barrel)
-        self._render_gun_barrel(surface, color)
+        self._render_gun_barrel(surface, color, camera)
 
         # Disegna la salute (4 cuori sopra il player)
-        self._render_health(surface)
+        self._render_health(surface, draw_rect)
 
-    def _render_gun_barrel(self, surface, color):
+    def _render_gun_barrel(self, surface, color, camera=None):
         """Disegna il tubo di mira dal player verso il mouse."""
-        start_x = self.rect.centerx
-        start_y = self.rect.centery
+        if camera is not None:
+            start_x = self.rect.centerx - camera.x
+            start_y = self.rect.centery - camera.y
+        else:
+            start_x = self.rect.centerx
+            start_y = self.rect.centery
 
         end_x = start_x + self.aim_x * self.gun_offset_distance
         end_y = start_y + self.aim_y * self.gun_offset_distance
@@ -249,10 +265,10 @@ class Player(pygame.sprite.Sprite):
         pygame.draw.line(surface, COLOR_YELLOW, (start_x, start_y), (end_x, end_y), 3)
         pygame.draw.circle(surface, COLOR_RED, (int(end_x), int(end_y)), 4)
 
-    def _render_health(self, surface):
+    def _render_health(self, surface, draw_rect):
         """Disegna i 4 cuori della salute sopra il player."""
-        heart_y = self.rect.top - 20
-        heart_x = self.rect.centerx - (self.max_health * 8)
+        heart_y = draw_rect.top - 20
+        heart_x = draw_rect.centerx - (self.max_health * 8)
 
         for i in range(self.max_health):
             if i < self.health:

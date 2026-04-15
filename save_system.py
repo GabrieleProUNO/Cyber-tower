@@ -10,6 +10,7 @@ Responsabilità:
 
 import json
 import os
+import copy
 from datetime import datetime
 from config import *
 
@@ -87,7 +88,7 @@ class SaveSystem:
             True se salvataggio riuscito
         """
         save_data = SaveData()
-        save_data.player_state = game_manager.player_state.copy()
+        save_data.player_state = copy.deepcopy(game_manager.player_state)
         save_data.playtime = playtime
 
         filename = os.path.join(self.SAVES_DIR, self.SLOT_FILE_TEMPLATE.format(slot))
@@ -110,7 +111,7 @@ class SaveSystem:
             playtime: Tempo di gioco
         """
         save_data = SaveData()
-        save_data.player_state = game_manager.player_state.copy()
+        save_data.player_state = copy.deepcopy(game_manager.player_state)
         save_data.playtime = playtime
 
         filename = os.path.join(self.SAVES_DIR, self.AUTOSAVE_FILE)

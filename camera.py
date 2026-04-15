@@ -9,7 +9,6 @@ Responsabilità:
 """
 
 import pygame
-import math
 from config import *
 
 
@@ -93,23 +92,13 @@ class Camera:
         """
         world_width, world_height = tilemap.get_world_size()
 
-        # Limite sinistro
-        if self.x < 0:
-            self.x = 0
+        # Se il mondo è più piccolo della viewport, mantieni camera ancorata a 0.
+        max_x = max(0, world_width - self.width)
+        max_y = max(0, world_height - self.height)
 
-        # Limite destro (non scrollare oltre)
-        max_x = world_width - self.width
-        if self.x > max_x:
-            self.x = max_x
-
-        # Limite superiore
-        if self.y < 0:
-            self.y = 0
-
-        # Limite inferiore
-        max_y = world_height - self.height
-        if self.y > max_y:
-            self.y = max_y
+        # Clamp finale.
+        self.x = max(0, min(self.x, max_x))
+        self.y = max(0, min(self.y, max_y))
 
     def world_to_screen(self, world_x, world_y):
         """
@@ -166,7 +155,7 @@ class Camera:
         Returns:
             pygame.Rect della viewport attuale
         """
-        return pygame.Rect(self.x, self.y, self.width, self.height)
+        return pygame.Rect(int(self.x), int(self.y), self.width, self.height)
 
     def set_position(self, world_x, world_y):
         """

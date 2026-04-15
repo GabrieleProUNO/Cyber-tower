@@ -88,10 +88,11 @@ class BossEnemy(Enemy):
             return
 
         # ====== AGGIORNA FASI ======
-        self._update_phase()
+        self._update_phase(dt)
 
         # ====== AGGIORNA ATTACCHI ======
         self._update_attacks(dt, player)
+        self._update_projectiles(dt, tilemap)
 
         # ====== AGGIORNA SCUDO ======
         if self.shield > 0:
@@ -104,7 +105,7 @@ class BossEnemy(Enemy):
         if self.state == self.STATE_CHASE:
             self._ai_boss_chase(player)
 
-    def _update_phase(self):
+    def _update_phase(self, dt):
         """Aggiorna le fasi del boss."""
         if self.health <= self.phase_health_threshold[2] and self.phase != 3:
             self.phase = 3
@@ -114,7 +115,15 @@ class BossEnemy(Enemy):
             self.phase = 2
             print(f"⚔️  FASE 2! Il boss accelera!")
 
-        self.phase_timer += 0.016  # Assume 60 FPS
+        self.phase_timer += dt
+
+    def _update_projectiles(self, dt, tilemap):
+        """Aggiorna i proiettili del boss."""
+        world_size = tilemap.get_world_size()
+        for projectile in self.projectiles[:]:
+            projectile.update(dt)
+            if not projectile.is_alive(world_size):
+                self.projectiles.remove(projectile)
 
     def _update_attacks(self, dt, player):
         """Aggiorna il sistema di attacco del boss."""
@@ -392,7 +401,7 @@ class BossEnemy(Enemy):
 
         # ====== PROIETTILI ======
         for projectile in self.projectiles:
-            projectile.render(surface)
+            projectile.render(surface, camera)
 
     def get_projectiles(self):
         """Ritorna i proiettili sparati."""

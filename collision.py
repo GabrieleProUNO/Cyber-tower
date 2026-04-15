@@ -13,6 +13,7 @@ Permette al player di scivolare lungo i muri mentre salta.
 
 import pygame
 from config import *
+from levels.tilemap import TILE_SIZE
 
 
 class CollisionSystem:
@@ -40,27 +41,37 @@ class CollisionSystem:
             tilemap: Oggetto Tilemap
         """
         player_rect = player.rect
+        move_x = int(player.vx)
+        move_y = int(player.vy)
+        if player.vx > 0:
+            move_x = max(1, move_x)
+        elif player.vx < 0:
+            move_x = min(-1, move_x)
+        if player.vy > 0:
+            move_y = max(1, move_y)
+        elif player.vy < 0:
+            move_y = min(-1, move_y)
 
         # Estende rect con velocità per detection predittiva
         extended_rect = player_rect.copy()
-        if player.vx > 0:
-            extended_rect.width += player.vx
+        if move_x > 0:
+            extended_rect.width += move_x
         else:
-            extended_rect.x += player.vx
-            extended_rect.width += abs(player.vx)
+            extended_rect.x += move_x
+            extended_rect.width += abs(move_x)
 
-        if player.vy > 0:
-            extended_rect.height += player.vy
+        if move_y > 0:
+            extended_rect.height += move_y
         else:
-            extended_rect.y += player.vy
-            extended_rect.height += abs(player.vy)
+            extended_rect.y += move_y
+            extended_rect.height += abs(move_y)
 
         # Ottieni tile solidi nel range
         solids = tilemap.get_solids_in_rect(extended_rect)
 
         # Risolvi collisioni per X (movimento orizzontale)
         CollisionSystem._resolve_collision_axis(
-            player_rect, solids, "horizontal"
+            player_rect, solids, "horizontal", player
         )
 
         # Risolvi collisioni per Y (movimento verticale)
@@ -190,10 +201,10 @@ class CollisionSystem:
         collected = []
 
         # Controlla tile attorno al player
-        grid_left = int(player.rect.left / 32)
-        grid_right = int(player.rect.right / 32)
-        grid_top = int(player.rect.top / 32)
-        grid_bottom = int(player.rect.bottom / 32)
+        grid_left = int(player.rect.left / TILE_SIZE)
+        grid_right = int(player.rect.right / TILE_SIZE)
+        grid_top = int(player.rect.top / TILE_SIZE)
+        grid_bottom = int(player.rect.bottom / TILE_SIZE)
 
         for grid_y in range(grid_top, grid_bottom + 1):
             for grid_x in range(grid_left, grid_right + 1):
@@ -214,8 +225,8 @@ class CollisionSystem:
         Returns:
             True se sulla uscita
         """
-        grid_x = int(player.rect.centerx / 32)
-        grid_y = int(player.rect.centery / 32)
+        grid_x = int(player.rect.centerx / TILE_SIZE)
+        grid_y = int(player.rect.centery / TILE_SIZE)
 
         return tilemap.has_exit(grid_x, grid_y)
 

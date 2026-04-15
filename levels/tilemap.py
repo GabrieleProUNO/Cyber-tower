@@ -66,6 +66,7 @@ class Tilemap:
         self.parallax_layers = {}  # Layer per effetto parallax
         self.world_width = 0  # Larghezza mondo in pixel
         self.world_height = 0  # Altezza mondo in pixel
+        self.tile_surfaces = self._create_tile_surfaces()
 
     def load_from_csv(self, filepath):
         """
@@ -162,20 +163,70 @@ class Tilemap:
         self.parallax_layers = {
             "far_background": {
                 "speed_factor": 0.1,  # Molto lento
-                "color": (20, 20, 30),
+                "color": (54, 76, 96),
                 "elements": self._generate_far_background(),
             },
             "mid_background": {
                 "speed_factor": 0.3,  # Medio
-                "color": (40, 40, 50),
+                "color": (74, 112, 140),
                 "elements": self._generate_mid_background(),
             },
             "close_background": {
                 "speed_factor": 0.6,  # Vicino
-                "color": (50, 50, 60),
+                "color": (95, 142, 168),
                 "elements": self._generate_close_background(),
             },
         }
+
+    def _create_tile_surfaces(self):
+        """Crea sprite procedurali per tile più dettagliati."""
+        surfaces = {}
+
+        # Solid tile (metallo industriale)
+        solid = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        solid.fill((28, 40, 52))
+        pygame.draw.rect(solid, (52, 78, 98), (2, 2, TILE_SIZE - 4, TILE_SIZE - 4), 2)
+        pygame.draw.line(solid, (80, 125, 148), (4, 8), (TILE_SIZE - 4, 8), 1)
+        pygame.draw.line(solid, (20, 28, 40), (4, TILE_SIZE - 8), (TILE_SIZE - 4, TILE_SIZE - 8), 1)
+        for bolt in ((6, 6), (TILE_SIZE - 6, 6), (6, TILE_SIZE - 6), (TILE_SIZE - 6, TILE_SIZE - 6)):
+            pygame.draw.circle(solid, (130, 164, 184), bolt, 2)
+        surfaces[TILE_SOLID] = solid
+
+        # Spikes tile
+        spikes = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        spikes.fill((24, 18, 22))
+        spike_w = TILE_SIZE // 4
+        for i in range(4):
+            x = i * spike_w
+            points = [(x, TILE_SIZE), (x + spike_w // 2, 6), (x + spike_w, TILE_SIZE)]
+            pygame.draw.polygon(spikes, (200, 68, 78), points)
+            pygame.draw.polygon(spikes, (255, 130, 120), points, 1)
+        surfaces[TILE_SPIKES] = spikes
+
+        # Collectible tile
+        collectible = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        pygame.draw.circle(collectible, (255, 220, 90, 70), (TILE_SIZE // 2, TILE_SIZE // 2), 14)
+        pygame.draw.circle(collectible, (250, 210, 80), (TILE_SIZE // 2, TILE_SIZE // 2), 8)
+        pygame.draw.circle(collectible, (255, 246, 170), (TILE_SIZE // 2 - 2, TILE_SIZE // 2 - 2), 3)
+        surfaces[TILE_COLLECTIBLE] = collectible
+
+        # Water tile
+        water = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        water.fill((20, 42, 72))
+        for y in range(5, TILE_SIZE, 6):
+            pygame.draw.line(water, (76, 170, 230), (2, y), (TILE_SIZE - 2, y), 1)
+        pygame.draw.rect(water, (110, 220, 255), (0, 0, TILE_SIZE, 4))
+        surfaces[TILE_WATER] = water
+
+        # Exit tile
+        exit_tile = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+        exit_tile.fill((24, 48, 30))
+        pygame.draw.rect(exit_tile, (88, 220, 110), (3, 3, TILE_SIZE - 6, TILE_SIZE - 6), 2)
+        pygame.draw.rect(exit_tile, (150, 255, 180, 90), (8, 5, TILE_SIZE - 16, TILE_SIZE - 10))
+        pygame.draw.circle(exit_tile, (206, 255, 220), (TILE_SIZE // 2, TILE_SIZE // 2), 3)
+        surfaces[TILE_DOOR_EXIT] = exit_tile
+
+        return surfaces
 
     def _generate_far_background(self):
         """Genera elementi per il far background (stelle, nebula)."""
@@ -212,6 +263,8 @@ class Tilemap:
             surface: Surface pygame
             camera: Oggetto Camera per transformazioni
         """
+        self._render_atmosphere(surface, camera)
+
         # Render parallax layers
         for layer_name, layer_data in self.parallax_layers.items():
             self._render_parallax_layer(surface, layer_data, camera)
@@ -229,22 +282,37 @@ class Tilemap:
         color = layer_data["color"]
         elements = layer_data["elements"]
 
-        # Calcola offset parallax
-        parallax_offset_x = camera.x * speed_factor
-        parallax_offset_y = camera.y * speed_factor
-
         # Disegna elementi
         for elem_x, elem_y in elements:
-            # Applica offset parallax e trasformazione camera
-            world_x = elem_x - parallax_offset_x
-            world_y = elem_y - parallax_offset_y
-
-            screen_x = world_x - camera.x
-            screen_y = world_y - camera.y
+            screen_x = elem_x - camera.x * speed_factor
+            screen_y = elem_y - camera.y * speed_factor
 
             # Disegna solo se visibile
             if -50 < screen_x < SCREEN_WIDTH + 50 and -50 < screen_y < SCREEN_HEIGHT + 50:
                 pygame.draw.circle(surface, color, (int(screen_x), int(screen_y)), 2)
+
+    def _render_atmosphere(self, surface, camera):
+        """Renderizza gradiente e silhouette industriali."""
+        top = (8, 14, 24)
+        bottom = (18, 32, 48)
+        for y in range(SCREEN_HEIGHT):
+            t = y / max(1, SCREEN_HEIGHT - 1)
+            color = (
+                int(top[0] + (bottom[0] - top[0]) * t),
+                int(top[1] + (bottom[1] - top[1]) * t),
+                int(top[2] + (bottom[2] - top[2]) * t),
+            )
+            pygame.draw.line(surface, color, (0, y), (SCREEN_WIDTH, y))
+
+        # Sagoma edifici/paratie, leggermente parallax.
+        skyline_y = SCREEN_HEIGHT - 180
+        for i in range(12):
+            width = 70 + (i % 3) * 30
+            height = 80 + (i % 5) * 30
+            x = (i * 140) - int(camera.x * 0.08) % 1800
+            rect = pygame.Rect(x - 200, skyline_y + 140 - height, width, height)
+            pygame.draw.rect(surface, (16, 24, 34), rect)
+            pygame.draw.rect(surface, (40, 90, 110), rect, 1)
 
     def _render_tilemap(self, surface, camera):
         """Disegna i tile del livello."""
@@ -269,10 +337,16 @@ class Tilemap:
                 screen_y = world_y - camera.y
 
                 # Disegna tile
-                tile_rect = pygame.Rect(screen_x, screen_y, TILE_SIZE, TILE_SIZE)
-                color = TILE_COLORS.get(tile_type, COLOR_WHITE)
-                pygame.draw.rect(surface, color, tile_rect)
-                pygame.draw.rect(surface, COLOR_WHITE, tile_rect, 1)
+                tile_rect = pygame.Rect(int(screen_x), int(screen_y), TILE_SIZE, TILE_SIZE)
+                tile_surface = self.tile_surfaces.get(tile_type)
+                if tile_surface is not None:
+                    surface.blit(tile_surface, tile_rect)
+                else:
+                    color = TILE_COLORS.get(tile_type, COLOR_WHITE)
+                    pygame.draw.rect(surface, color, tile_rect)
+
+                if DEBUG_MODE:
+                    pygame.draw.rect(surface, COLOR_WHITE, tile_rect, 1)
 
     def _render_debug_grid(self, surface, camera):
         """Disegna griglia di debug sopra il tilemap."""

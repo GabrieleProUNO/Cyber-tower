@@ -8,6 +8,19 @@ import sys
 from config import *
 
 
+def _configure_console_encoding():
+    """Evita crash su terminali Windows non UTF-8 durante i print con simboli."""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+_configure_console_encoding()
+
+
 class GameManager:
     """
     Gestore principale del gioco. Coordina:
@@ -34,9 +47,11 @@ class GameManager:
         self.player_state = {
             "current_floor": HUB_FLOOR,
             "health": PLAYER_MAX_HEALTH,
+            "max_health": PLAYER_MAX_HEALTH,
             "coins": 0,
             "inventory": [],
             "upgrades": {},  # Potenziamenti permanenti
+            "completed_floors": [],
         }
 
     def register_state(self, state_name, state_instance):

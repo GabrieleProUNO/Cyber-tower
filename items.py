@@ -9,6 +9,7 @@ Responsabilità:
 """
 
 import pygame
+import math
 from config import *
 
 
@@ -290,5 +291,3 @@ def get_all_items():
     """Ritorna lista di tutti i tipi di item."""
     return list(ITEM_PROPERTIES.keys())
 
-
-import math

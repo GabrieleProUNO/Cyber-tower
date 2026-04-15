@@ -12,14 +12,13 @@ Fase 3-4: Implementato Tilemap, Camera, Collision System e Nemici.
 """
 
 import pygame
-import math
 import os
 from config import *
 from states.base_state import BaseState
 from entities.player import Player
 from entities.projectile import Projectile
 from entities.enemy_manager import EnemyManager
-from levels.tilemap import Tilemap
+from levels.tilemap import Tilemap, TILE_SIZE, TILE_SOLID, TILE_SPIKES, TILE_WATER
 from levels.waves import get_waves_for_level
 from camera import Camera
 from collision import CollisionSystem
@@ -63,6 +62,7 @@ class LevelState(BaseState):
         self.camera = None
         self.level_complete = False
         self.level_time = 0.0
+        self.rewards_committed = False
 
         # ====== STATO ======
         self.collected_coins = 0
@@ -70,50 +70,17 @@ class LevelState(BaseState):
 
     def __enter__(self):
         """Inizializza il livello."""
-        self.floor_number = self.game_manager.player_state["current_floor"]
-        print(f"\n⚔️  ===== PIANO {self.floor_number} =====")
+        self.floor_number = max(1, self.game_manager.player_state["current_floor"])
+        print(f"\n===== PIANO {self.floor_number} =====")
 
         # ====== CARICA TILEMAP ======
-        level_filename = f"levels/level_{self.floor_number:02d}.csv"
-
-        if not os.path.exists(level_filename):
-            if self.floor_number == 1:
-                level_filename = "levels/level_01.csv"
-            elif self.floor_number == 2:
-                level_filename = "levels/level_02.csv"
-            else:
-                print(f"⚠️  Livello {self.floor_number} non trovato, uso template...")
-                level_filename = "levels/level_01.csv"
+        level_filename = self._resolve_level_filename(self.floor_number)
 
         self.tilemap = Tilemap()
         if not self.tilemap.load_from_csv(level_filename):
-            print(f"❌ Errore caricamento tilemap!")
+            print("Errore caricamento tilemap. Torno all'hub.")
+            self.change_state(STATE_HUB)
             return
-
-        # ====== CREA PLAYER ======
-        self.player = Player(100, 100)
-        player_state = self.game_manager.player_state
-        self.player.health = player_state["health"]
-        print(f"🎮 Player creato")
-
-        # ====== CREA CAMERA ======
-        world_width, world_height = self.tilemap.get_world_size()
-        self.camera = Camera(world_width, world_height)
-        self.camera.set_position(
-            self.player.rect.centerx - SCREEN_WIDTH / 3,
-            self.player.rect.centery - SCREEN_HEIGHT / 2.5,
-        )
-        print(f"📷 Camera creata (mondo: {world_width}x{world_height}px)")
-
-        # ====== CREA ENEMY MANAGER ======
-        self.enemy_manager = EnemyManager()
-        waves = get_waves_for_level(self.floor_number)
-        for wave_idx, wave_data in enumerate(waves):
-            print(f"📋 Wave {wave_idx + 1}: {len(wave_data)} nemici")
-        print(f"✓ {len(waves)} wave caricate")
-
-        # Spawna prima wave
-        self._spawn_next_wave()
 
         # ====== RESET STATO ======
         self.projectiles = []
@@ -125,15 +92,81 @@ class LevelState(BaseState):
         self.current_wave_index = 0
         self.wave_complete = False
         self.all_waves_complete = False
+        self.rewards_committed = False
 
-        print(f"✓ Livello inizializzato!")
+        # ====== CREA PLAYER ======
+        spawn_x, spawn_y = self._find_spawn_point()
+        self.player = Player(spawn_x, spawn_y)
+        player_state = self.game_manager.player_state
+        self.player.health = max(1, min(player_state["health"], PLAYER_MAX_HEALTH))
+        print("Player creato")
+
+        # ====== CREA CAMERA ======
+        world_width, world_height = self.tilemap.get_world_size()
+        self.camera = Camera(world_width, world_height)
+        self.camera.set_position(
+            self.player.rect.centerx - SCREEN_WIDTH / 3,
+            self.player.rect.centery - SCREEN_HEIGHT / 2.5,
+        )
+        self.camera.update(self.player, self.tilemap, 0)
+        print(f"Camera creata (mondo: {world_width}x{world_height}px)")
+
+        # ====== CREA ENEMY MANAGER ======
+        self.enemy_manager = EnemyManager()
+        waves = get_waves_for_level(self.floor_number)
+        for wave_idx, wave_data in enumerate(waves):
+            print(f"Wave {wave_idx + 1}: {len(wave_data)} nemici")
+        print(f"{len(waves)} wave caricate")
+
+        # Spawna prima wave
+        self._spawn_next_wave()
+
+        print("Livello inizializzato.")
+
+    def _resolve_level_filename(self, floor_number):
+        """Trova il file livello migliore disponibile."""
+        preferred = f"levels/level_{floor_number:02d}.csv"
+        if os.path.exists(preferred):
+            return preferred
+
+        if floor_number == 1 and os.path.exists("levels/level_01.csv"):
+            return "levels/level_01.csv"
+        if floor_number == 2 and os.path.exists("levels/level_02.csv"):
+            return "levels/level_02.csv"
+
+        # Fallback su template base.
+        if os.path.exists("levels/level_02.csv"):
+            return "levels/level_02.csv"
+        return "levels/level_01.csv"
+
+    def _find_spawn_point(self):
+        """Calcola uno spawn sicuro nel livello."""
+        if self.tilemap is None or not self.tilemap.grid:
+            return (100, 100)
+
+        spawn_grid_x = 2
+        if self.tilemap.width <= spawn_grid_x:
+            return (100, 100)
+        for grid_y in range(max(0, self.tilemap.height - 6)):
+            floor_y = grid_y + 1
+            if floor_y >= self.tilemap.height:
+                break
+
+            if (
+                self.tilemap.grid[grid_y][spawn_grid_x] == 0
+                and self.tilemap.grid[floor_y][spawn_grid_x]
+                in (TILE_SOLID, TILE_SPIKES, TILE_WATER)
+            ):
+                return (spawn_grid_x * TILE_SIZE, (grid_y * TILE_SIZE) - 4)
+
+        return (100, 100)
 
     def _spawn_next_wave(self):
         """Spawna la prossima wave di nemici."""
         waves = get_waves_for_level(self.floor_number)
 
         if self.current_wave_index >= len(waves):
-            print(f"✓ Tutte le wave completate!")
+            print("Tutte le wave completate.")
             self.all_waves_complete = True
             return
 
@@ -141,16 +174,71 @@ class LevelState(BaseState):
         self.enemy_manager.spawn_wave(wave_data, self.tilemap)
         self.wave_complete = False
         self.current_wave_index += 1
-        print(f"🌊 Wave {self.current_wave_index} spawnata!")
+        print(f"Wave {self.current_wave_index} spawnata.")
+
+    def _commit_level_rewards(self, mark_completed=False):
+        """Salva reward e stato player una sola volta."""
+        if self.rewards_committed:
+            return
+
+        self.game_manager.set_player_health(self.player.health)
+        if self.collected_coins > 0:
+            self.game_manager.add_coins(self.collected_coins)
+
+        if mark_completed:
+            completed = self.game_manager.player_state.get("completed_floors")
+            if completed is None:
+                self.game_manager.player_state["completed_floors"] = []
+                completed = self.game_manager.player_state["completed_floors"]
+            if self.floor_number not in completed:
+                completed.append(self.floor_number)
+
+        self.rewards_committed = True
+
+    def _return_to_hub(self, commit_rewards=True):
+        """Ritorna all'hub con commit opzionale."""
+        if commit_rewards and self.player is not None:
+            self._commit_level_rewards(mark_completed=self.level_complete)
+        self.change_state(STATE_HUB)
+
+    def _continue_to_next_floor(self):
+        """Conferma il livello e prepara il successivo."""
+        self._commit_level_rewards(mark_completed=True)
+
+        if self.floor_number >= FINAL_FLOOR:
+            self.game_manager.set_current_floor(HUB_FLOOR)
+            self.change_state(STATE_MENU)
+            return
+
+        self.game_manager.set_current_floor(self.floor_number + 1)
+        self.change_state(STATE_HUB)
+
+    def _complete_level(self):
+        """Segna il livello come completato."""
+        if self.level_complete:
+            return
+
+        self.level_complete = True
+        self.player.vx = 0
+        self.player.vy = 0
+        print("Livello completato.")
 
     def handle_events(self, events):
         """Gestisce input nel livello."""
+        if self.player is None:
+            return
+
         for event in events:
             if event.type == pygame.KEYDOWN:
+                if self.level_complete:
+                    if event.key == pygame.K_c:
+                        self._continue_to_next_floor()
+                    elif event.key in (pygame.K_h, pygame.K_ESCAPE):
+                        self._return_to_hub(commit_rewards=True)
+                    continue
+
                 if event.key == pygame.K_ESCAPE:
-                    self.game_manager.set_player_health(self.player.health)
-                    self.game_manager.add_coins(self.collected_coins)
-                    self.change_state(STATE_HUB)
+                    self._return_to_hub(commit_rewards=True)
 
                 elif event.key == pygame.K_F:
                     if DEBUG_MODE:
@@ -162,16 +250,16 @@ class LevelState(BaseState):
 
                 elif event.key == pygame.K_y:
                     # Completa livello per test
-                    print(f"✓ Livello completato (test)")
-                    self.level_complete = True
+                    if DEBUG_MODE:
+                        self._complete_level()
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
+                if event.button == 1 and not self.level_complete:
                     self._fire_projectile()
 
     def _fire_projectile(self):
         """Crea e spara un proiettile."""
-        if self.fire_cooldown > 0:
+        if self.fire_cooldown > 0 or self.player is None:
             return
 
         gun_pos = self.player.get_gun_position()
@@ -192,13 +280,20 @@ class LevelState(BaseState):
 
     def update(self, dt):
         """Logica di update del livello."""
+        if self.player is None or self.tilemap is None or self.camera is None:
+            return
+
         if dt > 0.1:
             dt = 0.1
 
+        if self.level_complete:
+            return
+
         # ====== AGGIORNA PLAYER INPUT ======
         keys = pygame.key.get_pressed()
-        mouse_pos = pygame.mouse.get_pos()
-        self.player.handle_input(keys, mouse_pos)
+        mouse_screen = pygame.mouse.get_pos()
+        mouse_world = self.camera.screen_to_world(mouse_screen[0], mouse_screen[1])
+        self.player.handle_input(keys, mouse_world)
 
         # ====== AGGIORNA PHYSICS PLAYER ======
         self.player.update(dt)
@@ -226,12 +321,19 @@ class LevelState(BaseState):
         self.camera.update(self.player, self.tilemap, dt)
 
         # ====== AGGIORNA PROIETTILI ======
-        self.fire_cooldown -= dt
+        self.fire_cooldown = max(0.0, self.fire_cooldown - dt)
+        world_size = self.tilemap.get_world_size()
 
         for projectile in self.projectiles[:]:
             projectile.update(dt)
 
-            if not projectile.is_alive():
+            # Impatto su pareti del tilemap.
+            tile_type = self.tilemap.get_tile_at(projectile.x, projectile.y)
+            if tile_type in (TILE_SOLID, TILE_SPIKES, TILE_WATER):
+                self.projectiles.remove(projectile)
+                continue
+
+            if not projectile.is_alive(world_size):
                 self.projectiles.remove(projectile)
 
         # ====== AGGIORNA NEMICI ======
@@ -244,28 +346,34 @@ class LevelState(BaseState):
         # ====== VERIFICA COMPLETAMENTO WAVE ======
         if self.enemy_manager.get_enemy_count() == 0 and not self.wave_complete:
             self.wave_complete = True
-            print(f"✓ Wave completata!")
+            print("Wave completata.")
 
             # Spawna prossima wave se disponibile
             if not self.all_waves_complete:
                 self._spawn_next_wave()
 
         # ====== VERIFICA USCITA ======
-        if CollisionSystem.check_exit(self.player, self.tilemap):
-            print(f"✓ Uscita trovata! Livello completato!")
-            self.level_complete = True
+        if (
+            CollisionSystem.check_exit(self.player, self.tilemap)
+            and self.all_waves_complete
+            and self.enemy_manager.get_enemy_count() == 0
+        ):
+            self._complete_level()
 
         # ====== VERIFICA GAME OVER ======
         if not self.player.is_alive():
-            print(f"💀 Game Over! Sei caduto al piano {self.floor_number}")
+            print(f"Game Over! Sei caduto al piano {self.floor_number}")
             self.game_manager.set_player_health(0)
             self.change_state(STATE_GAMEOVER)
+            return
 
         self.level_time += dt
 
     def render(self):
         """Disegna il livello."""
         self.screen.fill(COLOR_BLACK)
+        if self.tilemap is None:
+            return
 
         # ====== RENDER TILEMAP (CON PARALLAX) ======
         self.tilemap.render(self.screen, self.camera)
@@ -277,11 +385,12 @@ class LevelState(BaseState):
         self.enemy_manager.render_loot(self.screen, self.camera)
 
         # ====== RENDER PLAYER ======
-        self.player.render(self.screen)
+        if self.player is not None:
+            self.player.render(self.screen, self.camera)
 
         # ====== RENDER PROIETTILI ======
         for projectile in self.projectiles:
-            projectile.render(self.screen)
+            projectile.render(self.screen, self.camera)
 
         # ====== RENDER HUD ======
         self._render_hud()
@@ -297,10 +406,14 @@ class LevelState(BaseState):
     def _render_hud(self):
         """Disegna l'HUD in sovraimpressione."""
         y_offset = 20
+        panel = pygame.Surface((320, 190), pygame.SRCALPHA)
+        panel.fill((10, 18, 28, 170))
+        self.screen.blit(panel, (12, 12))
+        pygame.draw.rect(self.screen, (68, 140, 165), (12, 12, 320, 190), 2)
 
         # Salute
         health_text = self.font_text.render(
-            f"❤️  {self.player.health}/{self.player.max_health}",
+            f"HP {self.player.health}/{self.player.max_health}",
             True,
             COLOR_RED,
         )
@@ -308,13 +421,13 @@ class LevelState(BaseState):
 
         # Monete raccolte
         coins_text = self.font_text.render(
-            f"💰 {self.collected_coins}", True, COLOR_YELLOW
+            f"Monete {self.collected_coins}", True, COLOR_YELLOW
         )
         self.screen.blit(coins_text, (20, y_offset + 40))
 
         # Piano
         floor_text = self.font_text.render(
-            f"📍 Piano {self.floor_number}", True, COLOR_CYAN
+            f"Piano {self.floor_number}", True, COLOR_CYAN
         )
         self.screen.blit(floor_text, (20, y_offset + 80))
 
@@ -333,11 +446,16 @@ class LevelState(BaseState):
         )
         self.screen.blit(wave_text, (20, y_offset + 145))
 
+        exit_color = COLOR_GREEN if self.all_waves_complete else COLOR_RED
+        exit_status = "Uscita attiva" if self.all_waves_complete else "Uscita bloccata"
+        exit_text = self.font_small.render(exit_status, True, exit_color)
+        self.screen.blit(exit_text, (180, y_offset + 145))
+
         # Tempo
         time_text = self.font_small.render(
             f"Tempo: {self.level_time:.1f}s", True, COLOR_LIGHT_GRAY
         )
-        self.screen.blit(time_text, (SCREEN_WIDTH - 250, y_offset))
+        self.screen.blit(time_text, (SCREEN_WIDTH - 190, y_offset))
 
     def _render_level_complete(self):
         """Disegna la schermata di completamento."""
@@ -373,7 +491,7 @@ class LevelState(BaseState):
 
         # Istruzioni
         next_text = self.font_text.render(
-            "Premi ESC per tornare all'hub", True, COLOR_LIGHT_GRAY
+            "C = continua, H/ESC = torna all'hub", True, COLOR_LIGHT_GRAY
         )
         next_rect = next_text.get_rect(
             center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 80)

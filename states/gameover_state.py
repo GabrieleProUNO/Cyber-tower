@@ -51,11 +51,21 @@ class GameOverState(BaseState):
 
     def render(self):
         """Disegna la schermata di game over."""
-        self.screen.fill(COLOR_BLACK)
+        for y in range(SCREEN_HEIGHT):
+            t = y / max(1, SCREEN_HEIGHT - 1)
+            color = (
+                int(12 + 36 * t),
+                int(6 + 10 * t),
+                int(10 + 12 * t),
+            )
+            pygame.draw.line(self.screen, color, (0, y), (SCREEN_WIDTH, y))
 
         # Titolo GAME OVER
         title = self.font_title.render("GAME OVER", True, COLOR_RED)
         title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 4))
+        shadow = self.font_title.render("GAME OVER", True, (120, 26, 30))
+        shadow.set_alpha(90)
+        self.screen.blit(shadow, (title_rect.x + 3, title_rect.y + 3))
         self.screen.blit(title, title_rect)
 
         # Messaggio
@@ -73,6 +83,15 @@ class GameOverState(BaseState):
             color = COLOR_CYAN if i == self.selected_option else COLOR_LIGHT_GRAY
             option_text = self.font_text.render(option, True, color)
             option_rect = option_text.get_rect(center=(SCREEN_WIDTH // 2, y_start + i * 70))
+            panel = pygame.Rect(option_rect.left - 28, option_rect.top - 10, option_rect.width + 56, option_rect.height + 18)
+            pygame.draw.rect(self.screen, (28, 12, 16), panel, border_radius=8)
+            pygame.draw.rect(
+                self.screen,
+                (120, 48, 54) if i == self.selected_option else (84, 40, 46),
+                panel,
+                2,
+                border_radius=8,
+            )
             self.screen.blit(option_text, option_rect)
 
             if i == self.selected_option:

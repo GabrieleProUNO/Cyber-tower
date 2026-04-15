@@ -62,4 +62,4 @@ STATE_PAUSED = "paused"
 # ============================================================================
 # DEBUG
 # ============================================================================
-DEBUG_MODE = True  # Attiva visualizzazione di hitbox e info debug
+DEBUG_MODE = False  # Attiva visualizzazione di hitbox e info debug

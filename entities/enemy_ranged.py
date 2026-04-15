@@ -60,18 +60,19 @@ class RangedEnemy(Enemy):
         self.fire_cooldown -= dt
 
         # ====== AGGIORNA PROIETTILI ======
-        self._update_projectiles()
+        self._update_projectiles(dt, tilemap)
 
         # ====== SPARA SE IN RANGE ======
         if self.state == self.STATE_CHASE:
             self._try_fire_at_player(player)
 
-    def _update_projectiles(self):
+    def _update_projectiles(self, dt, tilemap):
         """Aggiorna i proiettili sparati da questo nemico."""
+        world_size = tilemap.get_world_size()
         for projectile in self.projectiles[:]:
-            projectile.update(0.016)  # Assume 60 FPS
+            projectile.update(dt)
 
-            if not projectile.is_alive():
+            if not projectile.is_alive(world_size):
                 self.projectiles.remove(projectile)
 
     def _try_fire_at_player(self, player):
@@ -122,7 +123,7 @@ class RangedEnemy(Enemy):
 
         # Disegna proiettili
         for projectile in self.projectiles:
-            projectile.render(surface)
+            projectile.render(surface, camera)
 
     def drop_loot(self):
         """RangedEnemy droppa un po' più di loot."""

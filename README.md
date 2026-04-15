@@ -129,7 +129,7 @@ Cyber-Tower/
 - ✓ Completion percentage
 - ✓ Option per ricominciare
 
-## 🕹️ Controlli (Versione Finale)
+## 🕹️ Controlli
 
 - **WASD** o **Frecce**: Movimento
 - **Spazio**: Salto
@@ -138,6 +138,8 @@ Cyber-Tower/
 - **E**: Interagire
 - **I**: Inventario
 - **ESC**: Pausa/Menu
+- **C**: Continua al piano successivo (dopo completamento livello)
+- **H**: Torna all'hub (dopo completamento livello)
 - **Frecce su/giù + Enter**: Navigazione menu
 
 ## 🎨 Stile Visivo

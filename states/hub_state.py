@@ -75,7 +75,18 @@ class HubState(BaseState):
 
     def render(self):
         """Disegna l'Hub sullo schermo."""
-        self.screen.fill(COLOR_DARK_GRAY)
+        for y in range(SCREEN_HEIGHT):
+            t = y / max(1, SCREEN_HEIGHT - 1)
+            color = (
+                int(14 + 18 * t),
+                int(20 + 24 * t),
+                int(26 + 30 * t),
+            )
+            pygame.draw.line(self.screen, color, (0, y), (SCREEN_WIDTH, y))
+
+        floor_band = pygame.Rect(0, SCREEN_HEIGHT - 130, SCREEN_WIDTH, 130)
+        pygame.draw.rect(self.screen, (24, 34, 42), floor_band)
+        pygame.draw.line(self.screen, (62, 150, 174), (0, SCREEN_HEIGHT - 130), (SCREEN_WIDTH, SCREEN_HEIGHT - 130), 2)
 
         # Titolo
         title = self.font_title.render("CYBER-TOWER - HUB (Piano 0)", True, COLOR_CYAN)
@@ -84,8 +95,12 @@ class HubState(BaseState):
 
         # Stato del giocatore
         player_state = self.game_manager.player_state
+        stats_panel = pygame.Rect(36, 102, 430, 150)
+        pygame.draw.rect(self.screen, (18, 28, 38), stats_panel, border_radius=10)
+        pygame.draw.rect(self.screen, (62, 132, 158), stats_panel, 2, border_radius=10)
+
         health_text = self.font_text.render(
-            f"❤️  Salute: {player_state['health']}/{PLAYER_MAX_HEALTH}",
+            f"HP: {player_state['health']}/{PLAYER_MAX_HEALTH}",
             True,
             COLOR_RED,
         )
@@ -93,13 +108,13 @@ class HubState(BaseState):
         self.screen.blit(health_text, health_rect)
 
         coins_text = self.font_text.render(
-            f"💰 Monete: {player_state['coins']}", True, COLOR_YELLOW
+            f"Monete: {player_state['coins']}", True, COLOR_YELLOW
         )
         coins_rect = coins_text.get_rect(topleft=(50, 160))
         self.screen.blit(coins_text, coins_rect)
 
         floor_text = self.font_text.render(
-            f"📍 Piano Attuale: {player_state['current_floor']}", True, COLOR_GREEN
+            f"Piano Attuale: {player_state['current_floor']}", True, COLOR_GREEN
         )
         floor_rect = floor_text.get_rect(topleft=(50, 200))
         self.screen.blit(floor_text, floor_rect)
@@ -110,6 +125,15 @@ class HubState(BaseState):
             color = COLOR_CYAN if i == self.selected_option else COLOR_LIGHT_GRAY
             option_text = self.font_text.render(option, True, color)
             option_rect = option_text.get_rect(center=(SCREEN_WIDTH // 2, y_start + i * 60))
+            option_panel = pygame.Rect(option_rect.left - 24, option_rect.top - 10, option_rect.width + 48, option_rect.height + 16)
+            pygame.draw.rect(self.screen, (14, 24, 32), option_panel, border_radius=8)
+            pygame.draw.rect(
+                self.screen,
+                (74, 144, 170) if i == self.selected_option else (48, 78, 96),
+                option_panel,
+                2,
+                border_radius=8,
+            )
             self.screen.blit(option_text, option_rect)
 
             # Freccia di selezione
@@ -120,7 +144,7 @@ class HubState(BaseState):
 
         # Istruzioni fondo
         instructions = self.font_small.render(
-            "↑↓ Navigare | ENTER Selezionare | ESC Torna al Menu", True, COLOR_LIGHT_GRAY
+            "↑↓ Naviga | ENTER Seleziona | ESC Menu", True, COLOR_LIGHT_GRAY
         )
         instructions_rect = instructions.get_rect(
             center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 30)

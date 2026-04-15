@@ -50,6 +50,14 @@ class Projectile(pygame.sprite.Sprite):
         self.radius = 5  # Raggio della sfera collider
 
         # ====== VELOCITÀ ======
+        # Normalizza direzione per evitare velocità incoerenti.
+        direction_len = math.hypot(direction_x, direction_y)
+        if direction_len == 0:
+            direction_x, direction_y = 1.0, 0.0
+        else:
+            direction_x /= direction_len
+            direction_y /= direction_len
+
         self.vx = direction_x * speed
         self.vy = direction_y * speed
         self.speed = speed
@@ -79,16 +87,21 @@ class Projectile(pygame.sprite.Sprite):
         self.x += self.vx * dt
         self.y += self.vy * dt
 
-    def render(self, surface):
+    def render(self, surface, camera=None):
         """
         Disegna il proiettile.
 
         Args:
             surface: Surface pygame dove disegnare
         """
-        # Converte a interi per il rendering
-        screen_x = int(self.x)
-        screen_y = int(self.y)
+        # Converte coordinate mondo -> schermo se la camera è disponibile.
+        if camera is not None:
+            screen_x, screen_y = camera.world_to_screen(self.x, self.y)
+        else:
+            screen_x, screen_y = self.x, self.y
+
+        screen_x = int(screen_x)
+        screen_y = int(screen_y)
 
         # Disegna il corpo principale
         pygame.draw.circle(surface, self.color, (screen_x, screen_y), self.radius)
@@ -109,18 +122,26 @@ class Projectile(pygame.sprite.Sprite):
         if DEBUG_MODE:
             pygame.draw.circle(surface, COLOR_GREEN, (screen_x, screen_y), self.radius, 1)
 
-    def is_alive(self):
+    def is_alive(self, world_size=None):
         """
         Controlla se il proiettile è ancora attivo.
 
         Returns:
             True se il proiettile è ancora in vita e nello schermo
         """
-        # Fuori dallo schermo
-        if self.x < -50 or self.x > SCREEN_WIDTH + 50:
-            return False
-        if self.y < -50 or self.y > SCREEN_HEIGHT + 50:
-            return False
+        # Fuori dal mondo (se disponibile), altrimenti fallback alla viewport.
+        if world_size is not None:
+            world_w, world_h = world_size
+            margin = 64
+            if self.x < -margin or self.x > world_w + margin:
+                return False
+            if self.y < -margin or self.y > world_h + margin:
+                return False
+        else:
+            if self.x < -50 or self.x > SCREEN_WIDTH + 50:
+                return False
+            if self.y < -50 or self.y > SCREEN_HEIGHT + 50:
+                return False
 
         # Lifetime scaduto
         if self.age >= self.lifetime:

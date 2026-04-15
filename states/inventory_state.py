@@ -43,11 +43,21 @@ class InventoryState(BaseState):
 
     def render(self):
         """Disegna l'inventario."""
-        self.screen.fill(COLOR_DARK_GRAY)
+        for y in range(SCREEN_HEIGHT):
+            t = y / max(1, SCREEN_HEIGHT - 1)
+            color = (
+                int(12 + 16 * t),
+                int(18 + 20 * t),
+                int(24 + 24 * t),
+            )
+            pygame.draw.line(self.screen, color, (0, y), (SCREEN_WIDTH, y))
 
         # Titolo
         title = self.font_title.render("INVENTARIO", True, COLOR_CYAN)
         title_rect = title.get_rect(center=(SCREEN_WIDTH // 2, 50))
+        panel = pygame.Rect(240, 20, SCREEN_WIDTH - 480, SCREEN_HEIGHT - 60)
+        pygame.draw.rect(self.screen, (16, 24, 34), panel, border_radius=12)
+        pygame.draw.rect(self.screen, (66, 132, 158), panel, 2, border_radius=12)
         self.screen.blit(title, title_rect)
 
         # Stato inventario
