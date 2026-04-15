@@ -105,11 +105,17 @@ Cyber-Tower/
 - ✓ Scaling difficoltà per piano
 - ✓ Collision detection completo
 
-### 🔄 Fase 5: UI, Inventario e NPC
-- [ ] Visualizzazione salute/monete
-- [ ] Sistema inventario
-- [ ] Menu combinazione oggetti
-- [ ] Sistema dialoghi NPC
+### ✅ Fase 5: UI, Inventario e NPC
+- ✓ Sistema Item con 9 tipi diversi
+- ✓ Rarità item (common/uncommon/rare/epic)
+- ✓ WorldItem con animazione e timeout
+- ✓ Inventario a slot con stacking automatico
+- ✓ Sistema crafting (ricette, combinazione)
+- ✓ NPC con dialoghi multi-linea
+- ✓ Shop integrate (commerciante, fucina)
+- ✓ UI Manager centralizzato
+- ✓ HUD principale e inventario
+- ✓ Dialoghi e interazione NPC
 
 ### 🔄 Fase 6: Loop di Progressione
 - [ ] Completamento livello
@@ -149,4 +155,4 @@ Cyber-Tower/
 
 ---
 
-**Status**: 🚀 Fase 4 Completata! (scegli di proseguire alla Fase 5)
+**Status**: 🚀 Fase 5 Completata! (scegli di proseguire alla Fase 6 - FINALE)
