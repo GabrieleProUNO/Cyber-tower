@@ -1,12 +1,14 @@
 """
 Level State: Rappresenta un livello attivo ai piani 1-18.
 
-Fase 3: Implementato Tilemap, Camera con Parallax, e Collision System.
+Fase 3-4: Implementato Tilemap, Camera, Collision System e Nemici.
 - Caricamento livelli da CSV
 - Camera che segue il player con smooth lerp
 - Parallax background rendering
 - AABB collision detection con sliding collision
 - Hazard e collectible detection
+- Enemy system con wave spawning
+- Combat system (proiettili vs nemici, nemici vs player)
 """
 
 import pygame
@@ -16,7 +18,9 @@ from config import *
 from states.base_state import BaseState
 from entities.player import Player
 from entities.projectile import Projectile
+from entities.enemy_manager import EnemyManager
 from levels.tilemap import Tilemap
+from levels.waves import get_waves_for_level
 from camera import Camera
 from collision import CollisionSystem
 
@@ -48,6 +52,12 @@ class LevelState(BaseState):
         self.fire_cooldown = 0.0
         self.fire_delay = 0.15
 
+        # ====== NEMICI ======
+        self.enemy_manager = None
+        self.current_wave_index = 0
+        self.wave_complete = False
+        self.all_waves_complete = False
+
         # ====== LIVELLO ======
         self.tilemap = None
         self.camera = None
@@ -56,7 +66,7 @@ class LevelState(BaseState):
 
         # ====== STATO ======
         self.collected_coins = 0
-        self.hazard_cooldown = 0.0  # Per evitare spam di danno
+        self.hazard_cooldown = 0.0
 
     def __enter__(self):
         """Inizializza il livello."""
@@ -64,17 +74,14 @@ class LevelState(BaseState):
         print(f"\n⚔️  ===== PIANO {self.floor_number} =====")
 
         # ====== CARICA TILEMAP ======
-        # Calcola percorso del file basato su floor
         level_filename = f"levels/level_{self.floor_number:02d}.csv"
 
-        # Se il file non esiste, usa un template
         if not os.path.exists(level_filename):
             if self.floor_number == 1:
                 level_filename = "levels/level_01.csv"
             elif self.floor_number == 2:
                 level_filename = "levels/level_02.csv"
             else:
-                # Fallback: crea un livello simple
                 print(f"⚠️  Livello {self.floor_number} non trovato, uso template...")
                 level_filename = "levels/level_01.csv"
 
@@ -98,6 +105,16 @@ class LevelState(BaseState):
         )
         print(f"📷 Camera creata (mondo: {world_width}x{world_height}px)")
 
+        # ====== CREA ENEMY MANAGER ======
+        self.enemy_manager = EnemyManager()
+        waves = get_waves_for_level(self.floor_number)
+        for wave_idx, wave_data in enumerate(waves):
+            print(f"📋 Wave {wave_idx + 1}: {len(wave_data)} nemici")
+        print(f"✓ {len(waves)} wave caricate")
+
+        # Spawna prima wave
+        self._spawn_next_wave()
+
         # ====== RESET STATO ======
         self.projectiles = []
         self.fire_cooldown = 0.0
@@ -105,8 +122,26 @@ class LevelState(BaseState):
         self.hazard_cooldown = 0.0
         self.level_complete = False
         self.level_time = 0.0
+        self.current_wave_index = 0
+        self.wave_complete = False
+        self.all_waves_complete = False
 
         print(f"✓ Livello inizializzato!")
+
+    def _spawn_next_wave(self):
+        """Spawna la prossima wave di nemici."""
+        waves = get_waves_for_level(self.floor_number)
+
+        if self.current_wave_index >= len(waves):
+            print(f"✓ Tutte le wave completate!")
+            self.all_waves_complete = True
+            return
+
+        wave_data = waves[self.current_wave_index]
+        self.enemy_manager.spawn_wave(wave_data, self.tilemap)
+        self.wave_complete = False
+        self.current_wave_index += 1
+        print(f"🌊 Wave {self.current_wave_index} spawnata!")
 
     def handle_events(self, events):
         """Gestisce input nel livello."""
@@ -199,6 +234,22 @@ class LevelState(BaseState):
             if not projectile.is_alive():
                 self.projectiles.remove(projectile)
 
+        # ====== AGGIORNA NEMICI ======
+        self.enemy_manager.update(dt, self.player, self.tilemap, self.projectiles)
+
+        # ====== RACCOGLI LOOT ======
+        coins_collected = self.enemy_manager.collect_loot(self.player)
+        self.collected_coins += coins_collected
+
+        # ====== VERIFICA COMPLETAMENTO WAVE ======
+        if self.enemy_manager.get_enemy_count() == 0 and not self.wave_complete:
+            self.wave_complete = True
+            print(f"✓ Wave completata!")
+
+            # Spawna prossima wave se disponibile
+            if not self.all_waves_complete:
+                self._spawn_next_wave()
+
         # ====== VERIFICA USCITA ======
         if CollisionSystem.check_exit(self.player, self.tilemap):
             print(f"✓ Uscita trovata! Livello completato!")
@@ -218,6 +269,12 @@ class LevelState(BaseState):
 
         # ====== RENDER TILEMAP (CON PARALLAX) ======
         self.tilemap.render(self.screen, self.camera)
+
+        # ====== RENDER NEMICI ======
+        self.enemy_manager.render(self.screen, self.camera)
+
+        # ====== RENDER LOOT ======
+        self.enemy_manager.render_loot(self.screen, self.camera)
 
         # ====== RENDER PLAYER ======
         self.player.render(self.screen)
@@ -261,11 +318,20 @@ class LevelState(BaseState):
         )
         self.screen.blit(floor_text, (20, y_offset + 80))
 
-        # Proiettili
-        projectiles_text = self.font_small.render(
-            f"Proiettili: {len(self.projectiles)}", True, COLOR_GREEN
+        # Nemici rimanenti
+        enemy_count = self.enemy_manager.get_enemy_count()
+        enemies_text = self.font_small.render(
+            f"Nemici: {enemy_count}", True, COLOR_RED
         )
-        self.screen.blit(projectiles_text, (20, y_offset + 120))
+        self.screen.blit(enemies_text, (20, y_offset + 120))
+
+        # Wave
+        wave_text = self.font_small.render(
+            f"Wave: {self.current_wave_index}/{len(get_waves_for_level(self.floor_number))}",
+            True,
+            COLOR_GREEN
+        )
+        self.screen.blit(wave_text, (20, y_offset + 145))
 
         # Tempo
         time_text = self.font_small.render(

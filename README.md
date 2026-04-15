@@ -93,11 +93,17 @@ Cyber-Tower/
 - ✓ Exit detection (completamento livello)
 - ✓ Debug grid e info camera
 
-### 🔄 Fase 4: Nemici, IA e Combattimento
-- [ ] Classe base Enemy
-- [ ] Nemici base con IA semplice
-- [ ] Mini-boss
-- [ ] Logica proiettili e collisioni
+### ✅ Fase 4: Nemici, IA e Combattimento
+- ✓ Classe Enemy base con IA (patrol/chase/attack/dead)
+- ✓ WalkerEnemy (attacca da vicino, health 3)
+- ✓ RangedEnemy (spara proiettili, health 2)
+- ✓ JumperEnemy (salta aggressivamente, health 4)
+- ✓ EnemyManager centralizzato
+- ✓ Wave system (configurato/proceduralmente generato)
+- ✓ Damage system (player vs enemy, projectile vs enemy)
+- ✓ Loot drop (monete, guarigione)
+- ✓ Scaling difficoltà per piano
+- ✓ Collision detection completo
 
 ### 🔄 Fase 5: UI, Inventario e NPC
 - [ ] Visualizzazione salute/monete
@@ -143,4 +149,4 @@ Cyber-Tower/
 
 ---
 
-**Status**: 🚀 Fase 3 Completata! (scegli di proseguire alla Fase 4)
+**Status**: 🚀 Fase 4 Completata! (scegli di proseguire alla Fase 5)
