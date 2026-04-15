@@ -67,12 +67,15 @@ Cyber-Tower/
 - ✓ Sistema di gestione stati
 - ✓ Menu principale, Hub, Livelli, Inventario, GameOver
 
-### 🔄 Fase 2: Player Controller
-- [ ] Classe Player
-- [ ] Movimento fluido (WASD)
-- [ ] Salto e gravità
-- [ ] Sistema di mira e sparo (mouse)
-- [ ] Gestione salute (4 cuori)
+### ✅ Fase 2: Player Controller
+- ✓ Classe Player con fisica completa
+- ✓ Movimento fluido con accelerazione/frizione (WASD/Frecce)
+- ✓ Salto realistico con gravità e coyote time
+- ✓ Sistema di mira e sparo (mouse in tempo reale)
+- ✓ Gestione salute (4 cuori con invulnerabilità post-danno)
+- ✓ Classe Projectile con lifetime e collision detection
+- ✓ Cooldown tra spari
+- ✓ Rendering con visualizzazione tubo di mira
 
 ### 🔄 Fase 3: Tilemap e Telecamera
 - [ ] Sistema di caricamento livelli (CSV/Tiled)
@@ -129,4 +132,4 @@ Cyber-Tower/
 
 ---
 
-**Status**: 🚀 Fase 1 Completata (scegli di proseguire alla Fase 2)
+**Status**: 🚀 Fase 2 Completata! (scegli di proseguire alla Fase 3)
